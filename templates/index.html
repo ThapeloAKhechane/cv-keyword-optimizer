@@ -1,0 +1,85 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Free CV Keyword Optimizer</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            background: #f4f6f8;
+            padding: 40px;
+        }
+        .container {
+            max-width: 900px;
+            margin: auto;
+            background: white;
+            padding: 30px;
+            border-radius: 8px;
+        }
+        textarea {
+            width: 100%;
+            height: 180px;
+            margin-bottom: 15px;
+            padding: 10px;
+            font-size: 14px;
+        }
+        button {
+            padding: 12px 25px;
+            background: #0a66c2;
+            color: white;
+            border: none;
+            font-size: 16px;
+            cursor: pointer;
+        }
+        .result {
+            margin-top: 25px;
+            padding: 20px;
+            background: #eef3f8;
+            border-radius: 6px;
+        }
+        .score {
+            font-size: 22px;
+            font-weight: bold;
+        }
+        ul {
+            columns: 2;
+        }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <h1>Free CV Keyword Optimizer</h1>
+    <p>Paste your CV and the job description below.  
+       Instantly see how well your CV matches the job.</p>
+
+    <form method="post" action="/analyze">
+        <h3>Your CV</h3>
+        <textarea name="cv_text" required></textarea>
+
+        <h3>Job Description</h3>
+        <textarea name="job_text" required></textarea>
+
+        <button type="submit">Analyze CV</button>
+    </form>
+
+    {% if result %}
+    <div class="result">
+        <p class="score">Match Score: {{ result.match_score }}%</p>
+
+        <h4>Missing Keywords:</h4>
+        {% if result.missing_keywords %}
+        <ul>
+            {% for word in result.missing_keywords %}
+            <li>{{ word }}</li>
+            {% endfor %}
+        </ul>
+        {% else %}
+        <p>Your CV already matches very well 🎉</p>
+        {% endif %}
+    </div>
+    {% endif %}
+</div>
+
+</body>
+</html>
