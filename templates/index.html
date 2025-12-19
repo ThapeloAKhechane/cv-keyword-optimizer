@@ -23,6 +23,12 @@
             padding: 10px;
             font-size: 14px;
         }
+        input[type="email"] {
+            width: 100%;
+            padding: 10px;
+            margin-bottom: 15px;
+            font-size: 14px;
+        }
         button {
             padding: 12px 25px;
             background: #0a66c2;
@@ -44,24 +50,63 @@
         ul {
             columns: 2;
         }
+        .trust-box {
+            background: #f0f8ff;
+            padding: 15px;
+            border-radius: 6px;
+            margin-bottom: 20px;
+            font-size: 14px;
+        }
+        .message {
+            margin-top: 15px;
+            padding: 10px;
+            background: #e6fffa;
+            border-radius: 6px;
+            color: #065f46;
+        }
+        .footer {
+            margin-top: 40px;
+            font-size: 13px;
+            color: #555;
+            text-align: center;
+        }
     </style>
 </head>
 <body>
 
 <div class="container">
     <h1>Free CV Keyword Optimizer</h1>
-    <p>Paste your CV and the job description below.  
-       Instantly see how well your CV matches the job.</p>
+    <p>
+        Improve your CV by matching it against a job description.
+        This tool helps you optimize keywords for ATS (Applicant Tracking Systems).
+    </p>
+
+    <!-- TRUST & TRANSPARENCY -->
+    <div class="trust-box">
+        ✅ 100% Free tool<br>
+        🔒 We do NOT store your CV or job description<br>
+        📧 Email is optional and used only to send helpful CV tips<br>
+        💻 Built with Python & NLP (open-source)
+    </div>
 
     <form method="post" action="/analyze">
         <h3>Your CV</h3>
-        <textarea name="cv_text" required></textarea>
+        <textarea name="cv_text" placeholder="Paste your CV here..." required></textarea>
 
         <h3>Job Description</h3>
-        <textarea name="job_text" required></textarea>
+        <textarea name="job_text" placeholder="Paste the job description here..." required></textarea>
+
+        <h3>Email (Optional)</h3>
+        <input type="email" name="email" placeholder="Optional: Enter email for CV tips and insights">
 
         <button type="submit">Analyze CV</button>
     </form>
+
+    {% if message %}
+    <div class="message">
+        {{ message }}
+    </div>
+    {% endif %}
 
     {% if result %}
     <div class="result">
@@ -79,6 +124,18 @@
         {% endif %}
     </div>
     {% endif %}
+
+    <div class="footer">
+        <p>
+            🔍 Transparency:
+            <a href="https://github.com/ThapeloAKhechane/cv-keyword-optimizer" target="_blank">
+                View Source Code on GitHub
+            </a>
+        </p>
+        <p>
+            ⚠️ Disclaimer: This tool assists with keyword optimization only and does not guarantee job placement.
+        </p>
+    </div>
 </div>
 
 </body>
