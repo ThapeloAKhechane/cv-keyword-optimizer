@@ -20,12 +20,11 @@ st.title("Free CV Keyword Optimizer")
 
 st.write(
     "Improve your CV by matching it against a job description. "
-    "This tool helps job seekers optimize keywords for "
-    "ATS (Applicant Tracking Systems)."
+    "This tool helps job seekers optimize keywords for ATS (Applicant Tracking Systems)."
 )
 
 # ----------------------------
-# TRUST BOX (FIXED TEXT VISIBILITY)
+# TRUST BOX
 # ----------------------------
 st.markdown(
     """
@@ -39,7 +38,7 @@ st.markdown(
     ">
         <strong>✅ 100% Free tool</strong><br>
         🔒 <strong>We do NOT store your CV or job description</strong><br>
-        📧 <strong>Email is optional</strong> and used only to send helpful CV tips<br>
+        📧 <strong>Email is required</strong> to receive helpful CV tips<br>
         💻 Built with <strong>Python & NLP</strong> (open-source foundation)
     </div>
     """,
@@ -63,9 +62,9 @@ job_text = st.text_area(
     height=200
 )
 
-st.subheader("Email (Optional)")
+st.subheader("Email (Required)")
 email = st.text_input(
-    "Optional: Enter your email to receive helpful CV tips and insights"
+    "Enter your email to receive helpful CV tips and insights"
 )
 
 # ----------------------------
@@ -77,10 +76,19 @@ analyze_clicked = st.button("Analyze CV")
 # PROCESSING & RESULTS
 # ----------------------------
 if analyze_clicked:
-    if not cv_text or not job_text:
+    # --- CHECK EMAIL ---
+    if not email:
+        st.warning("Please enter your email before analyzing your CV.")
+    elif not cv_text or not job_text:
         st.warning("Please paste both your CV and the job description.")
     else:
-        # Run NLP comparison (NO storage of CV or job text)
+        # --- SAVE EMAIL ---
+        with open("leads.csv", "a", encoding="utf-8") as f:
+            f.write(f"{email},{datetime.now()}\n")
+
+        st.success("Thanks! Your email was recorded. We may send helpful CV tips.")
+
+        # --- RUN NLP COMPARISON ---
         result = compare_cv_to_job(cv_text, job_text)
 
         st.markdown("---")
@@ -112,19 +120,7 @@ if analyze_clicked:
             st.success("Your CV already matches very well 🎉")
 
         # ----------------------------
-        # EMAIL HANDLING (ETHICAL)
-        # ----------------------------
-        if email:
-            with open("leads.csv", "a", encoding="utf-8") as f:
-                f.write(f"{email},{datetime.now()}\n")
-
-            st.success(
-                "Thanks! Your email was recorded. "
-                "We may send helpful CV tips and insights."
-            )
-
-        # ----------------------------
-        # SOFT MONETIZATION (NO PRESSURE)
+        # SOFT MONETIZATION
         # ----------------------------
         st.markdown("---")
         st.write(
@@ -138,7 +134,7 @@ if analyze_clicked:
         )
 
 # ----------------------------
-# FOOTER (LEGITIMACY)
+# FOOTER
 # ----------------------------
 st.markdown("---")
 st.caption(
