@@ -2,6 +2,7 @@ import streamlit as st
 from datetime import datetime
 
 from nlp import compare_cv_to_job
+# UI TRUST FIX – FORCED UPDATE
 
 # ----------------------------
 # PAGE CONFIG
