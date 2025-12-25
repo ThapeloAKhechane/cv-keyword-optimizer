@@ -2,8 +2,6 @@ import streamlit as st
 from datetime import datetime
 from nlp import compare_cv_to_job
 
-# UI TRUST FIX – FORCED UPDATE
-
 # ----------------------------
 # PAGE CONFIG
 # ----------------------------
@@ -14,12 +12,23 @@ st.set_page_config(
 )
 
 # ----------------------------
+# SESSION STATE
+# ----------------------------
+if "unlocked" not in st.session_state:
+    st.session_state["unlocked"] = False
+
+# ----------------------------
+# PAYPAL LINK
+# ----------------------------
+PAYPAL_PAYMENT_LINK = "https://www.paypal.com/ncp/payment/Z53DVGAC8WN7C"
+
+# ----------------------------
 # TITLE & INTRO
 # ----------------------------
 st.title("High-Level CV Generator & ATS Optimizer")
 
 st.write(
-    "Create a complete high-quality CV, then check it against any job description to optimize for ATS."
+    "Create a professional CV and optimize it for Applicant Tracking Systems (ATS)."
 )
 
 # ----------------------------
@@ -35,19 +44,19 @@ st.markdown(
         color:#000000;
         line-height:1.6;
     ">
-        <strong>✅ 100% Free tool</strong><br>
-        🔒 <strong>We do NOT store your CV or job description</strong><br>
-        📧 <strong>Email is required</strong> to receive helpful CV tips<br>
-        💻 Built with <strong>Python & NLP</strong> (open-source foundation)
+        <strong>✅ Secure & Private</strong><br>
+        🔒 We do NOT store your CV or job description<br>
+        📧 Email required to send helpful CV tips<br>
+        💳 One-time PayPal payment (no subscriptions)
     </div>
     """,
     unsafe_allow_html=True
 )
 
-st.write("")  # spacing
+st.write("")
 
 # ----------------------------
-# USER INPUTS FOR CV GENERATION
+# USER INPUTS
 # ----------------------------
 st.subheader("Personal Information")
 name = st.text_input("Full Name")
@@ -57,41 +66,38 @@ city = st.text_input("City")
 country = st.text_input("Country")
 
 st.subheader("Professional Summary")
-summary = st.text_area("Brief professional summary (2–4 sentences)", height=100)
+summary = st.text_area("2–4 sentence professional summary", height=100)
 
 st.subheader("Education")
-education = st.text_area("Degrees, Institutions, Graduation Years, Achievements", height=100)
+education = st.text_area("Degrees, Institutions, Years", height=100)
 
 st.subheader("Work Experience")
 work_experience = st.text_area(
-    "Job Titles, Companies, Dates, Key Responsibilities / Achievements", height=150
+    "Roles, Companies, Achievements", height=150
 )
 
 st.subheader("Skills")
-skills = st.text_area("Technical / soft skills (comma-separated)", height=100)
+skills = st.text_area("Skills (comma-separated)", height=100)
 
 st.subheader("Certifications & Languages (Optional)")
-certifications = st.text_area("List certifications and languages", height=80)
+certifications = st.text_area("Certifications / Languages", height=80)
 
 st.subheader("Hobbies / Interests (Optional)")
-hobbies = st.text_area("List hobbies or interests", height=80)
+hobbies = st.text_area("Hobbies / Interests", height=80)
 
-# ----------------------------
-# JOB DESCRIPTION FOR ATS CHECK
-# ----------------------------
-st.subheader("Job Description for ATS Check")
+st.subheader("Job Description (for ATS Analysis)")
 job_description = st.text_area("Paste job description here", height=150)
 
 # ----------------------------
-# ANALYZE / GENERATE BUTTON
+# GENERATE BUTTON
 # ----------------------------
-analyze_clicked = st.button("Generate CV & Analyze")
+generate_clicked = st.button("Generate CV")
 
 # ----------------------------
-# HELPER FUNCTION TO CREATE CV
+# CV BUILDER
 # ----------------------------
 def build_complete_cv():
-    cv_sections = [
+    sections = [
         f"Name: {name}",
         f"Email: {email}",
         f"Phone: {phone}" if phone else "",
@@ -103,87 +109,101 @@ def build_complete_cv():
         ("\nCertifications & Languages:\n" + certifications) if certifications else "",
         ("\nHobbies / Interests:\n" + hobbies) if hobbies else ""
     ]
-    return "\n".join([s for s in cv_sections if s.strip() != ""])
+    return "\n".join([s for s in sections if s.strip()])
 
 # ----------------------------
-# HELPER FUNCTION TO GENERATE CV BULLETS
+# BULLET GENERATOR
 # ----------------------------
 def generate_cv_bullets(missing_keywords):
     bullets = []
     for kw in missing_keywords:
-        bullets.append(f"- Demonstrated experience with {kw}.")
-        bullets.append(f"- Successfully applied {kw} in practical projects.")
+        bullets.append(f"- Demonstrated hands-on experience with {kw}.")
+        bullets.append(f"- Applied {kw} in real-world professional scenarios.")
     return bullets
 
 # ----------------------------
-# PROCESSING
+# PROCESS
 # ----------------------------
-if analyze_clicked:
-    # --- VALIDATE EMAIL ---
+if generate_clicked:
     if not email:
-        st.warning("Please enter your email before generating your CV.")
+        st.warning("Email is required.")
     elif not name or not summary or not work_experience or not skills:
-        st.warning("Please fill in at least your Name, Summary, Work Experience, and Skills.")
+        st.warning("Please complete all required fields.")
     else:
-        # --- SAVE EMAIL LEAD ---
+        # Save email lead
         with open("leads.csv", "a", encoding="utf-8") as f:
             f.write(f"{email},{datetime.now()}\n")
 
-        st.success("Thanks! Your email was recorded. We may send helpful CV tips.")
+        st.success("CV generated successfully.")
 
-        # --- GENERATE COMPLETE CV ---
         complete_cv = build_complete_cv()
-        st.subheader("Generated Complete CV")
+
+        st.subheader("Generated CV")
         st.text_area("Your CV", complete_cv, height=400)
 
-        # --- RUN ATS ANALYSIS ---
-        if job_description.strip():
-            result = compare_cv_to_job(complete_cv, job_description)
+        st.markdown("---")
 
+        # ----------------------------
+        # PAYWALL SECTION
+        # ----------------------------
+        if not st.session_state["unlocked"]:
+            st.subheader("🔒 ATS Optimization Locked")
+
+            st.write(
+                "Unlock ATS analysis, keyword matching, and improvement suggestions."
+            )
+
+            st.markdown(
+                f"""
+                <a href="{PAYPAL_PAYMENT_LINK}" target="_blank">
+                    <button style="
+                        background-color:#0070ba;
+                        color:white;
+                        padding:14px 22px;
+                        border:none;
+                        border-radius:6px;
+                        font-size:16px;
+                        cursor:pointer;
+                    ">
+                        💳 Pay with PayPal to Unlock
+                    </button>
+                </a>
+                """,
+                unsafe_allow_html=True
+            )
+
+            st.caption(
+                "Secure PayPal checkout • One-time payment • No refunds after analysis"
+            )
+
+            if st.button("✅ I have completed payment"):
+                st.session_state["unlocked"] = True
+                st.success("Payment confirmed. ATS features unlocked.")
+
+        # ----------------------------
+        # ATS ANALYSIS (UNLOCKED)
+        # ----------------------------
+        if st.session_state["unlocked"] and job_description.strip():
             st.markdown("---")
             st.subheader("ATS Analysis Results")
 
-            st.metric(label="Match Score", value=f"{result['match_score']}%")
+            result = compare_cv_to_job(complete_cv, job_description)
 
-            st.write("### Missing Keywords")
+            st.metric("Match Score", f"{result['match_score']}%")
+
             if result["missing_keywords"]:
+                st.write("### Missing Keywords")
                 st.write(result["missing_keywords"])
-                st.write("### Suggested CV Bullet Points")
-                bullets = generate_cv_bullets(result["missing_keywords"])
-                for b in bullets:
-                    st.write(b)
+
+                st.write("### Suggested Bullet Points")
+                for bullet in generate_cv_bullets(result["missing_keywords"]):
+                    st.write(bullet)
             else:
-                st.success("Your CV already matches very well 🎉")
-
-            st.info(
-                "Most companies use ATS (Applicant Tracking Systems) to scan CVs. "
-                "Ensure your CV contains the relevant keywords to improve your chances."
-            )
-
-        else:
-            st.info("No job description provided. You can copy the generated CV and paste a job description to analyze later.")
-
-        # ----------------------------
-        # USER FEEDBACK (STARS)
-        # ----------------------------
-        st.markdown("---")
-        st.subheader("Rate the Usefulness of This Tool")
-
-        # Star rating (1 to 5)
-        rating = st.slider("How useful was this system?", 1, 5, 5)
-
-        # Optional comment
-        comment = st.text_area("Any additional comments? (Optional)", height=80)
-
-        # Submit feedback button
-        if st.button("Submit Feedback"):
-            with open("usage_log.csv", "a", encoding="utf-8") as f:
-                f.write(f"{datetime.now()},{email},{result.get('match_score','')},{rating},{comment}\n")
-            st.success("Thank you! Your feedback has been recorded.")
+                st.success("Your CV is already well-optimized 🎉")
 
 # ----------------------------
 # FOOTER
 # ----------------------------
 st.markdown("---")
-st.caption("🔍 Transparency: Source code available on GitHub")
-st.caption("⚠️ Disclaimer: Tool assists with keyword optimization; no job guarantees.")
+st.caption("⚠️ Disclaimer: This tool improves ATS keyword alignment only.")
+st.caption("© 2025 High-Level CV Optimizer")
