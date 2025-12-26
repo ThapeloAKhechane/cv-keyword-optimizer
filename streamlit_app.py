@@ -224,4 +224,3 @@ You are viewing **FREE TRIAL results**.
 # ----------------------------
 st.markdown("---")
 st.caption("Transparency • No data resale • Educational use")
-s
