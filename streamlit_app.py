@@ -1,6 +1,23 @@
 import streamlit as st
+import os
 from datetime import datetime
+import csv
+from dotenv import load_dotenv
+import openai
+
 from nlp import compare_cv_to_job
+
+# ----------------------------
+# LOAD ENVIRONMENT VARIABLES
+# ----------------------------
+load_dotenv()
+OPENAI_API_KEY = os.getenv("OPENAI_API_KEY")
+
+if not OPENAI_API_KEY:
+    st.error("OpenAI API key not found. Please check your .env file.")
+    st.stop()
+
+openai.api_key = OPENAI_API_KEY
 
 # ----------------------------
 # PAGE CONFIG
@@ -12,46 +29,32 @@ st.set_page_config(
 )
 
 # ----------------------------
-# SESSION STATE
+# SESSION STATE (FREE TRIAL)
 # ----------------------------
-if "unlocked" not in st.session_state:
-    st.session_state["unlocked"] = False
+if "free_used" not in st.session_state:
+    st.session_state.free_used = False
 
 # ----------------------------
-# PAYPAL LINK
-# ----------------------------
-PAYPAL_PAYMENT_LINK = "https://www.paypal.com/ncp/payment/Z53DVGAC8WN7C"
-
-# ----------------------------
-# TITLE & INTRO
+# TITLE
 # ----------------------------
 st.title("High-Level CV Generator & ATS Optimizer")
 
 st.write(
-    "Create a professional CV and optimize it for Applicant Tracking Systems (ATS)."
+    "Build a **professional, ATS-optimized CV**, then analyze it against any job description."
 )
 
 # ----------------------------
 # TRUST BOX
 # ----------------------------
-st.markdown(
-    """
-    <div style="
-        background-color:#f0f8ff;
-        padding:15px;
-        border-radius:6px;
-        font-size:14px;
-        color:#000000;
-        line-height:1.6;
-    ">
-        <strong>✅ Secure & Private</strong><br>
-        🔒 We do NOT store your CV or job description<br>
-        📧 Email required to send helpful CV tips<br>
-        💳 One-time PayPal payment (no subscriptions)
-    </div>
-    """,
-    unsafe_allow_html=True
-)
+st.markdown("""
+<div style="background:#f0f8ff;padding:15px;border-radius:6px;font-size:14px;">
+✅ <b>1 Free Trial</b> (no payment)<br>
+🔒 <b>We do NOT store CV or job descriptions</b><br>
+📧 <b>Email required</b> for CV insights<br>
+💻 Built with <b>Python, NLP & AI</b><br>
+⚠️ Premium unlocks advanced AI rewriting
+</div>
+""", unsafe_allow_html=True)
 
 st.write("")
 
@@ -61,149 +64,164 @@ st.write("")
 st.subheader("Personal Information")
 name = st.text_input("Full Name")
 email = st.text_input("Email (Required)")
-phone = st.text_input("Phone (Optional)")
 city = st.text_input("City")
 country = st.text_input("Country")
 
 st.subheader("Professional Summary")
-summary = st.text_area("2–4 sentence professional summary", height=100)
-
-st.subheader("Education")
-education = st.text_area("Degrees, Institutions, Years", height=100)
+summary = st.text_area("2–4 sentence summary")
 
 st.subheader("Work Experience")
-work_experience = st.text_area(
-    "Roles, Companies, Achievements", height=150
-)
+experience = st.text_area("Roles, achievements, responsibilities")
+
+st.subheader("Education")
+education = st.text_area("Degrees, institutions")
 
 st.subheader("Skills")
-skills = st.text_area("Skills (comma-separated)", height=100)
+skills = st.text_area("Comma-separated skills")
 
-st.subheader("Certifications & Languages (Optional)")
-certifications = st.text_area("Certifications / Languages", height=80)
-
-st.subheader("Hobbies / Interests (Optional)")
-hobbies = st.text_area("Hobbies / Interests", height=80)
-
-st.subheader("Job Description (for ATS Analysis)")
-job_description = st.text_area("Paste job description here", height=150)
+st.subheader("Job Description")
+job_description = st.text_area("Paste job description")
 
 # ----------------------------
-# GENERATE BUTTON
+# BUTTON
 # ----------------------------
-generate_clicked = st.button("Generate CV")
+analyze = st.button("Generate CV & Analyze")
 
 # ----------------------------
 # CV BUILDER
 # ----------------------------
-def build_complete_cv():
-    sections = [
-        f"Name: {name}",
-        f"Email: {email}",
-        f"Phone: {phone}" if phone else "",
-        f"Location: {city}, {country}",
-        "\nProfessional Summary:\n" + summary,
-        "\nEducation:\n" + education,
-        "\nWork Experience:\n" + work_experience,
-        "\nSkills:\n" + skills,
-        ("\nCertifications & Languages:\n" + certifications) if certifications else "",
-        ("\nHobbies / Interests:\n" + hobbies) if hobbies else ""
-    ]
-    return "\n".join([s for s in sections if s.strip()])
+def build_cv():
+    return f"""
+{name}
+{city}, {country}
+Email: {email}
+
+PROFESSIONAL SUMMARY
+{summary}
+
+WORK EXPERIENCE
+{experience}
+
+EDUCATION
+{education}
+
+SKILLS
+{skills}
+"""
 
 # ----------------------------
-# BULLET GENERATOR
+# AI REWRITE (PREMIUM)
 # ----------------------------
-def generate_cv_bullets(missing_keywords):
-    bullets = []
-    for kw in missing_keywords:
-        bullets.append(f"- Demonstrated hands-on experience with {kw}.")
-        bullets.append(f"- Applied {kw} in real-world professional scenarios.")
-    return bullets
+def ai_rewrite(cv_text):
+    prompt = f"""
+Rewrite the following CV to be highly professional,
+ATS-optimized, achievement-focused and modern.
+
+CV:
+{cv_text}
+"""
+    response = openai.ChatCompletion.create(
+        model="gpt-4o-mini",
+        messages=[{"role": "user", "content": prompt}],
+        temperature=0.4
+    )
+    return response.choices[0].message.content
 
 # ----------------------------
-# PROCESS
+# MAIN LOGIC
 # ----------------------------
-if generate_clicked:
+if analyze:
     if not email:
         st.warning("Email is required.")
-    elif not name or not summary or not work_experience or not skills:
-        st.warning("Please complete all required fields.")
+        st.stop()
+
+    if not all([name, summary, experience, skills]):
+        st.warning("Please fill in all required sections.")
+        st.stop()
+
+    # Save email
+    with open("leads.csv", "a", newline="", encoding="utf-8") as f:
+        csv.writer(f).writerow([email, datetime.now()])
+
+    cv_text = build_cv()
+
+    # ATS ANALYSIS
+    result = compare_cv_to_job(cv_text, job_description)
+
+    st.subheader("ATS Match Result")
+    st.metric("Match Score", f"{result['match_score']}%")
+
+    st.write("Missing Keywords:", result["missing_keywords"])
+
+    # ----------------------------
+    # FREE TRIAL LIMIT
+    # ----------------------------
+    if not st.session_state.free_used:
+        st.session_state.free_used = True
+
+        st.info("""
+You are viewing **FREE TRIAL results**.
+
+🔓 Premium unlocks:
+• AI-rewritten CV  
+• Strong bullet points  
+• ATS keyword injection  
+• Professional formatting
+""")
+
     else:
-        # Save email lead
-        with open("leads.csv", "a", encoding="utf-8") as f:
-            f.write(f"{email},{datetime.now()}\n")
+        st.warning("Free trial used.")
 
-        st.success("CV generated successfully.")
+        st.markdown("### 🔓 Unlock Premium")
+        st.markdown("""
+**Get the full AI-optimized CV instantly**
 
-        complete_cv = build_complete_cv()
+✔ Deep AI rewrite  
+✔ ATS keyword alignment  
+✔ Strong achievement bullets  
+✔ Ready-to-submit CV
+""")
 
-        st.subheader("Generated CV")
-        st.text_area("Your CV", complete_cv, height=400)
+        st.markdown(
+            """
+            <a href="https://www.paypal.com/ncp/payment/Z53DVGAC8WN7C" target="_blank">
+            <button style="background:#0070ba;color:white;padding:12px 20px;border:none;border-radius:5px;font-size:16px;">
+            Pay with PayPal – Unlock Premium
+            </button>
+            </a>
+            """,
+            unsafe_allow_html=True
+        )
 
-        st.markdown("---")
+        st.stop()
 
-        # ----------------------------
-        # PAYWALL SECTION
-        # ----------------------------
-        if not st.session_state["unlocked"]:
-            st.subheader("🔒 ATS Optimization Locked")
+    # ----------------------------
+    # PREMIUM AI REWRITE (AFTER PAYMENT)
+    # ----------------------------
+    if st.checkbox("I have paid – Generate Premium CV"):
+        with st.spinner("AI is rewriting your CV..."):
+            premium_cv = ai_rewrite(cv_text)
 
-            st.write(
-                "Unlock ATS analysis, keyword matching, and improvement suggestions."
+        st.subheader("Premium AI-Optimized CV")
+        st.text_area("Your Premium CV", premium_cv, height=450)
+
+    # ----------------------------
+    # FEEDBACK
+    # ----------------------------
+    st.subheader("Rate this tool")
+    rating = st.slider("How useful was this?", 1, 5, 5)
+    comment = st.text_area("Optional feedback")
+
+    if st.button("Submit Feedback"):
+        with open("usage_log.csv", "a", newline="", encoding="utf-8") as f:
+            csv.writer(f).writerow(
+                [datetime.now(), email, rating, comment]
             )
-
-            st.markdown(
-                f"""
-                <a href="{PAYPAL_PAYMENT_LINK}" target="_blank">
-                    <button style="
-                        background-color:#0070ba;
-                        color:white;
-                        padding:14px 22px;
-                        border:none;
-                        border-radius:6px;
-                        font-size:16px;
-                        cursor:pointer;
-                    ">
-                        💳 Pay with PayPal to Unlock
-                    </button>
-                </a>
-                """,
-                unsafe_allow_html=True
-            )
-
-            st.caption(
-                "Secure PayPal checkout • One-time payment • No refunds after analysis"
-            )
-
-            if st.button("✅ I have completed payment"):
-                st.session_state["unlocked"] = True
-                st.success("Payment confirmed. ATS features unlocked.")
-
-        # ----------------------------
-        # ATS ANALYSIS (UNLOCKED)
-        # ----------------------------
-        if st.session_state["unlocked"] and job_description.strip():
-            st.markdown("---")
-            st.subheader("ATS Analysis Results")
-
-            result = compare_cv_to_job(complete_cv, job_description)
-
-            st.metric("Match Score", f"{result['match_score']}%")
-
-            if result["missing_keywords"]:
-                st.write("### Missing Keywords")
-                st.write(result["missing_keywords"])
-
-                st.write("### Suggested Bullet Points")
-                for bullet in generate_cv_bullets(result["missing_keywords"]):
-                    st.write(bullet)
-            else:
-                st.success("Your CV is already well-optimized 🎉")
+        st.success("Thank you for your feedback!")
 
 # ----------------------------
 # FOOTER
 # ----------------------------
 st.markdown("---")
-st.caption("⚠️ Disclaimer: This tool improves ATS keyword alignment only.")
-st.caption("© 2025 High-Level CV Optimizer")
+st.caption("Transparency • No data resale • Educational use")
+s
