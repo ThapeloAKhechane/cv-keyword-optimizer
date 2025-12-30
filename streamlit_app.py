@@ -1,262 +1,173 @@
 import streamlit as st
-from datetime import datetime
-from io import BytesIO
+from fpdf import FPDF
+import re
 
-from nlp import compare_cv_to_job
+# -----------------------------
+# CONFIG
+# -----------------------------
+APP_NAME = "AI CV & ATS Optimizer"
+ADMIN_EMAIL = "khechanethapelo5@gmail.com"   # change to YOUR email
+PAYPAL_LINK = "https://www.paypal.com/ncp/payment/Z53DVGAC8WN7C"
 
-# ----------------------------
-# PAGE CONFIG
-# ----------------------------
-st.set_page_config(
-    page_title="High-Level CV Generator & ATS Optimizer",
-    page_icon="📄",
-    layout="centered"
-)
-
-
-
-# ----------------------------
-# SAFE FILE LOGGING (CLOUD SAFE)
-# ----------------------------
-def write_log(filename, line):
-    try:
-        with open(filename, "a", encoding="utf-8") as f:
-            f.write(line + "\n")
-    except Exception:
-        pass
-
-# ----------------------------
+# -----------------------------
 # SESSION STATE
-# ----------------------------
-if "used_free_trial" not in st.session_state:
-    st.session_state.used_free_trial = False
+# -----------------------------
+if "free_used" not in st.session_state:
+    st.session_state.free_used = False
 
 if "premium_unlocked" not in st.session_state:
     st.session_state.premium_unlocked = False
 
-# ----------------------------
-# TITLE & INTRO
-# ----------------------------
-st.title("High-Level CV Generator & ATS Optimizer")
+# -----------------------------
+# UTIL FUNCTIONS
+# -----------------------------
+def extract_keywords(text):
+    words = re.findall(r"\b[a-zA-Z]{4,}\b", text.lower())
+    return list(set(words))
 
-st.write(
-    "Create a professional CV and see how well it matches a job description using ATS-style analysis."
-)
+def ats_score(cv, jd):
+    cv_words = extract_keywords(cv)
+    jd_words = extract_keywords(jd)
+    matched = set(cv_words).intersection(set(jd_words))
+    score = int((len(matched) / max(len(jd_words), 1)) * 100)
+    return score, matched
 
-# ----------------------------
-# TRUST BOX
-# ----------------------------
-st.markdown(
-    """
-    <div style="
-        background-color:#111827;
-        padding:16px;
-        border-radius:8px;
-        color:#e5e7eb;
-        font-size:15px;
-        line-height:1.6;
-    ">
-        ✅ <strong>1 Free Trial (No Payment Required)</strong><br>
-        🔒 We do <strong>NOT</strong> permanently store CVs or job descriptions<br>
-        📧 Email required for CV insights<br>
-        ⚠️ Premium unlocks ATS-optimized formatting & PDF download
-    </div>
-    """,
-    unsafe_allow_html=True
-)
+def basic_pdf(cv_text):
+    pdf = FPDF()
+    pdf.add_page()
+    pdf.set_font("Arial", size=11)
+    for line in cv_text.split("\n"):
+        pdf.multi_cell(0, 8, line)
+    return pdf
 
-# ----------------------------
-# USER INPUTS
-# ----------------------------
-st.subheader("Personal Information")
-name = st.text_input("Full Name")
-email = st.text_input("Email (Required)")
-phone = st.text_input("Phone (Optional)")
-city = st.text_input("City")
-country = st.text_input("Country")
+def premium_pdf(cv_text):
+    pdf = FPDF()
+    pdf.add_page()
+    pdf.set_font("Helvetica", "B", 16)
+    pdf.cell(0, 12, "Professional CV", ln=True)
 
-st.subheader("Professional Summary")
-summary = st.text_area("2–4 sentences", height=100)
+    pdf.ln(4)
+    pdf.set_font("Helvetica", size=11)
+    for line in cv_text.split("\n"):
+        pdf.multi_cell(0, 8, f"• {line}")
+    return pdf
 
-st.subheader("Education")
-education = st.text_area("Degrees, institutions, years", height=100)
+def ai_rewrite(cv, keywords):
+    return (
+        "PROFESSIONAL SUMMARY\n"
+        "Results-driven professional with proven experience in "
+        + ", ".join(list(keywords)[:6]) +
+        ". Adept at delivering measurable impact and exceeding expectations.\n\n"
+        + cv
+    )
 
-st.subheader("Work Experience")
-work_experience = st.text_area("Roles, companies, achievements", height=150)
+# -----------------------------
+# UI START
+# -----------------------------
+st.set_page_config(page_title=APP_NAME, layout="wide")
+st.title(APP_NAME)
+st.caption("Beat ATS systems • Get noticed • One free trial")
 
-st.subheader("Skills")
-skills = st.text_area("Comma-separated", height=100)
+# -----------------------------
+# USER EMAIL
+# -----------------------------
+email = st.text_input("Your email (required for premium access)")
 
-st.subheader("Certifications / Languages (Optional)")
-certifications = st.text_area("Optional", height=80)
+if email == ADMIN_EMAIL:
+    st.session_state.premium_unlocked = True
 
-st.subheader("Job Description (For ATS Check)")
-job_description = st.text_area("Paste job description", height=150)
+# -----------------------------
+# FREE CORE TOOL (PHASE 1)
+# -----------------------------
+st.header("🟢 Free ATS CV Check (1 Free Trial)")
 
-# ----------------------------
-# CV BUILDER
-# ----------------------------
-def build_complete_cv():
-    return f"""
-{name}
-{city}, {country}
-Email: {email} | Phone: {phone}
+cv_text = st.text_area("Paste your CV here", height=200)
+jd_text = st.text_area("Paste Job Description here", height=150)
 
-----------------------------------------
-
-PROFESSIONAL SUMMARY
-{summary}
-
-----------------------------------------
-
-EDUCATION
-{education}
-
-----------------------------------------
-
-WORK EXPERIENCE
-{work_experience}
-
-----------------------------------------
-
-SKILLS
-{skills}
-
-----------------------------------------
-
-CERTIFICATIONS & LANGUAGES
-{certifications}
-""".strip()
-
-# ----------------------------
-# PDF GENERATION (CLEAN & PROFESSIONAL)
-# ----------------------------
-def generate_pdf(text):
-    from reportlab.lib.pagesizes import A4
-    from reportlab.pdfgen import canvas
-
-    buffer = BytesIO()
-    c = canvas.Canvas(buffer, pagesize=A4)
-    width, height = A4
-
-    x_margin = 40
-    y = height - 40
-
-    for line in text.split("\n"):
-        if y < 40:
-            c.showPage()
-            y = height - 40
-        c.setFont("Helvetica", 10)
-        c.drawString(x_margin, y, line)
-        y -= 14
-
-    c.save()
-    buffer.seek(0)
-    return buffer
-
-# ----------------------------
-# FREE TRIAL ACTION
-# ----------------------------
-if st.button("Generate CV & Analyze"):
-    if not email:
-        st.warning("Email is required.")
-    elif st.session_state.used_free_trial:
-        st.warning("Free trial already used. Unlock premium to continue.")
+if st.button("Analyze CV"):
+    if st.session_state.free_used:
+        st.warning("You have already used your free trial.")
+    elif not cv_text or not jd_text:
+        st.error("Please provide both CV and job description.")
     else:
-        st.session_state.used_free_trial = True
-        write_log("leads.csv", f"{email},{datetime.now()}")
+        st.session_state.free_used = True
+        score, matched = ats_score(cv_text, jd_text)
 
-        cv_text = build_complete_cv()
+        st.success(f"ATS Match Score: {score}%")
+        st.write("### Matched Keywords")
+        st.write(", ".join(matched))
 
-        st.success("CV generated successfully.")
-        st.subheader("Generated CV")
-        st.text_area("Preview", cv_text, height=350)
+        st.info("This is a basic preview. Premium unlocks AI rewriting & professional formatting.")
 
-        if job_description.strip():
-            result = compare_cv_to_job(cv_text, job_description)
-
-            st.subheader("ATS Match Result")
-            st.metric("Match Score", f"{result['match_score']}%")
-
-            if result["missing_keywords"]:
-                st.write("Missing Keywords:")
-                st.write(result["missing_keywords"])
-            else:
-                st.success("Strong ATS compatibility.")
-
-        st.warning(
-            "⚠️ Recruiters scan CVs in seconds. "
-            "Premium unlocks optimized formatting & downloadable PDF."
+        pdf = basic_pdf(cv_text)
+        st.download_button(
+            "Download Basic PDF",
+            data=pdf.output(dest="S").encode("latin-1"),
+            file_name="basic_cv.pdf",
+            mime="application/pdf"
         )
 
-# ----------------------------
-# PREMIUM SECTION
-# ----------------------------
+# -----------------------------
+# PRIVACY NOTICE
+# -----------------------------
 st.markdown("---")
-st.subheader("🔓 Unlock Premium")
-
-st.write(
-    """
-    **Premium Includes**
-    - Clean ATS-friendly formatting
-    - Structured professional PDF
-    - Downloadable CV
-    """
+st.caption(
+    "🔒 Privacy Notice: CVs and job descriptions are processed in-session only. "
+    "We do NOT store, sell, or reuse your data."
 )
 
-if st.button("Unlock Premium with PayPal"):
-    if email:
-        st.session_state.premium_unlocked = True
-        write_log("payment_clicks.csv", f"{datetime.now()},{email}")
-        st.success("Premium unlocked. PDF download is now available below.")
-    else:
-        st.warning("Please enter your email first.")
+# -----------------------------
+# PREMIUM PREVIEW (LOCKED)
+# -----------------------------
+st.markdown("---")
+st.header("🔒 Premium Features (Preview)")
 
-# ----------------------------
-# PDF DOWNLOAD (PREMIUM)
-# ----------------------------
+col1, col2, col3 = st.columns(3)
+col1.metric("AI CV Rewrite", "Locked 🔒")
+col2.metric("Modern CV Design", "Locked 🔒")
+col3.metric("Professional PDF", "Locked 🔒")
+
+st.caption("Unlock to access professional-level CV rewriting and formatting.")
+
+# -----------------------------
+# UNLOCK SECTION
+# -----------------------------
+if not st.session_state.premium_unlocked:
+    st.markdown("### Unlock Premium")
+    st.write("✔ One-time upgrade\n✔ Professional CV\n✔ AI rewriting")
+
+    st.link_button("Unlock with PayPal", PAYPAL_LINK)
+
+    st.info(
+        "After payment, return here and enter the same email used on PayPal. "
+        "Premium access will be enabled manually during early access."
+    )
+
+# -----------------------------
+# PREMIUM SECTION
+# -----------------------------
 if st.session_state.premium_unlocked:
-    pdf = generate_pdf(build_complete_cv())
+    st.markdown("---")
+    st.header("👑 Premium CV Builder")
+
+    score, matched = ats_score(cv_text, jd_text)
+    rewritten_cv = ai_rewrite(cv_text, matched)
+
+    st.subheader("AI-Rewritten CV")
+    st.text_area("Optimized CV", rewritten_cv, height=300)
+
+    pdf = premium_pdf(rewritten_cv)
     st.download_button(
-        "📄 Download Your Professional CV (PDF)",
-        pdf,
-        file_name="High_Level_CV.pdf",
+        "Download Professional PDF",
+        data=pdf.output(dest="S").encode("latin-1"),
+        file_name="professional_cv.pdf",
         mime="application/pdf"
     )
 
-# ----------------------------
-# FEEDBACK
-# ----------------------------
+    st.success("Premium unlocked. You now have full access.")
+
+# -----------------------------
+# FOOTER
+# -----------------------------
 st.markdown("---")
-st.subheader("Rate This Tool")
-
-rating = st.slider("How useful was this tool?", 1, 5, 5)
-comment = st.text_area("Optional comment", height=80)
-
-if st.button("Submit Feedback") and email:
-    write_log("usage_log.csv", f"{datetime.now()},{email},{rating},{comment}")
-    st.success("Thank you for your feedback!")
-
-# ----------------------------
-# TRANSPARENCY
-# ----------------------------
-st.markdown(
-    """
-    <div style="
-        margin-top:25px;
-        padding:18px;
-        border-radius:8px;
-        background-color:#020617;
-        color:#facc15;
-        font-size:16px;
-        line-height:1.7;
-    ">
-        <strong>Transparency Notice</strong><br>
-        • No data resale<br>
-        • No CVs permanently stored<br>
-        • Emails used only for CV insights<br>
-        • Educational & professional use only
-    </div>
-    """,
-    unsafe_allow_html=True
-)
+st.caption("Built to help candidates pass ATS filters and get interviews.")
