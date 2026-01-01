@@ -54,7 +54,7 @@ payments = load_csv("payment_clicks.csv")
 feedback = load_csv("usage_log.csv")
 
 # ----------------------------
-# KEY METRICS (UPGRADED)
+# KEY METRICS
 # ----------------------------
 st.subheader("📊 Key Metrics")
 
@@ -68,7 +68,6 @@ conversion_rate = (
     if len(leads) > 0 else 0
 )
 col3.metric("Lead → Checkout %", f"{conversion_rate}%")
-
 col4.metric("Feedback Entries", len(feedback))
 
 # ----------------------------
@@ -80,13 +79,25 @@ st.dataframe(leads, use_container_width=True)
 # ----------------------------
 # PAYMENT INTENT TIMELINE
 # ----------------------------
-st.subheader("💰 Payment Intent Timeline")
-if not payments.empty:
-    payments["timestamp"] = pd.to_datetime(payments.iloc[:, 0])
-    daily = payments.groupby(payments["timestamp"].dt.date).size()
-    st.line_chart(daily)
+st.subheader("💳 Payment Intent Timeline")
+
+if not payments.empty and "timestamp" in payments.columns:
+    payments["timestamp"] = pd.to_datetime(
+        payments["timestamp"],
+        errors="coerce"
+    )
+
+    payments = payments.dropna(subset=["timestamp"])
+
+    payments = payments.sort_values("timestamp", ascending=False)
+
+    st.dataframe(payments, use_container_width=True)
 else:
-    st.info("No payment data yet.")
+    st.info("No valid payment timestamp data available.")
+
+# Debug helper (admin-only visibility)
+with st.expander("🔍 Payments CSV Structure"):
+    st.write(payments.columns.tolist())
 
 # ----------------------------
 # USER FEEDBACK

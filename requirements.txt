@@ -34,7 +34,6 @@ murmurhash==1.0.15
 narwhals==2.14.0
 nltk==3.9.2
 numpy==2.3.5
-openai==2.14.0
 packaging==25.0
 pandas==2.3.3
 pillow==12.0.0
