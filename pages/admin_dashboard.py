@@ -4,10 +4,21 @@ import pandas as pd
 from datetime import datetime
 
 # ----------------------------
-# SECURITY CHECK
+# LOAD ADMIN PASSWORD (LOCAL + CLOUD SAFE)
 # ----------------------------
-ADMIN_PASSWORD = os.getenv("ADMIN_PASSWORD")
+ADMIN_PASSWORD = None
 
+if "ADMIN_PASSWORD" in st.secrets:
+    ADMIN_PASSWORD = st.secrets["ADMIN_PASSWORD"]
+else:
+    ADMIN_PASSWORD = os.getenv("ADMIN_PASSWORD")
+
+# 🔍 TEMPORARY DEBUG LINE (REMOVE AFTER CONFIRMATION)
+st.write("Password loaded:", bool(ADMIN_PASSWORD))
+
+# ----------------------------
+# PAGE CONFIG
+# ----------------------------
 st.set_page_config(
     page_title="Admin Dashboard",
     page_icon="🔐",
@@ -16,8 +27,11 @@ st.set_page_config(
 
 st.title("🔐 Admin Dashboard")
 
+# ----------------------------
+# SECURITY CHECK
+# ----------------------------
 if not ADMIN_PASSWORD:
-    st.error("Admin password not configured.")
+    st.error("❌ Admin password is not configured.")
     st.stop()
 
 if "admin_authenticated" not in st.session_state:
@@ -88,7 +102,6 @@ if not payments.empty and "timestamp" in payments.columns:
     )
 
     payments = payments.dropna(subset=["timestamp"])
-
     payments = payments.sort_values("timestamp", ascending=False)
 
     st.dataframe(payments, use_container_width=True)
